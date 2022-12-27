@@ -6,7 +6,7 @@ Este repositório serve para guardar scripts em shell Bash para uso com VPNs esp
 
 - `vpn-tokena3.sh`: conexão a uma VPN GlobalProtect usando um token USB com certificado A3. A configuração do token fica a cargo do utilizador.
 - `ssl-vpnplus.sh`: conexão a uma VPN VMware SSL-VPNPlus usando o cliente Linux, que deve estar previamente instalado e configurado.
-- `tailscale-vpn.sh`: conexão a um exit node [Tailscale](https://tailscale.com); Tailscale deve estar instalado e configurado.
+- `tailscale-vpn.sh`: conexão a um exit node [Tailscale](https://tailscale.com) da sua tailnet; Tailscale deve estar instalado e configurado.
 
 ## Utilização
 
@@ -18,4 +18,4 @@ Atenção: `tailscale-vpn.sh` exige o IP do exit node como argumento de `-c` ou 
 
 Nas VPNs corporativas, os nomes internos à VPN são resolvidos pelos servidores DNS internos da empresa; no entanto, em sistemas baseados em systemd, sem o NetworkManger a configuração deve ser feita explicitamente. Mais informações (em inglẽs) [aqui](https://www.gabriel.urdhr.fr/2020/03/17/systemd-revolved-dns-configuration-for-vpn/).
 
-Usamos a mesma técnica em `tailscale-vpn.sh` que, apesar de não ser uma VPN corporativa, pode ser usada para garantir segurança em redes inseguras ou hostis (p.ex. Wi-Fi públicos).
+Usamos a mesma técnica em `tailscale-vpn.sh` que, apesar de não ser uma VPN corporativa, pode ser usada para garantir segurança em redes inseguras ou hostis (p.ex. Wi-Fi públicos). Talvez não seja necessária (e talvez o script inteiro não seja necessário) quando se usa MagicDNS.

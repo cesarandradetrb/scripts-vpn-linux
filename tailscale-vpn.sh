@@ -60,9 +60,8 @@ function connect {
 	# Este script não garante que o exit node esteja corretamente configurado
 	# Isto deve ser feito ANTES de rodar este script
 	#
-	# Derrubamos e levantamos o Tailscale usando o exit node desejado
+	# Avisamos ao Tailscale do exit node desejado
 	#
-	sudo tailscale down
 	sudo tailscale up --exit-node=$exitip
 	#
 	# Apontamos os DNS e os resolvers de domínios de busca que queremos para a conexão da VPN (tailscale0)
@@ -76,9 +75,8 @@ function connect {
 function disconnect {
 	#
 	# Desconectando
-	# Derrubando a Tailscale e levantando sem exit node
+	# Avisamos ao Tailscale que não precisaremos do exit node
 	#
-	sudo tailscale down
 	sudo tailscale up --exit-node=""
 }
 
