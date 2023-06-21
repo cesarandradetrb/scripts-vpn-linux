@@ -7,24 +7,7 @@
 prog_name=$(basename $0)
 
 # 
-# Definimos as variáveis que utilizaremos em caso de conexão
-# TODAS as modificações de personalização do script são feitas aqui
-#
-USERCERT="certificado-do-usuario"
-SERVERCERT="certificado-do-servidor"
-CAFILE="/local/da/cadeia/do/token/a3.pem"
-PORTAL="portal.vpn.com.br"
-USUARIO="usuario@servidor.com.br"
-# Modifique a variável GATEWAY para o authgroup desejado
-GATEWAY="GW_EXT_AUTHGROUP_TOKEN_A3"
-# Estas variáveis não são necessárias caso a conexão VPN sete automaticamente os DNS
-DNS1=0.0.0.0
-DNS2=0.0.0.0
-DOMAIN1="~interno"
-DOMAIN2="~interno.com.br"
-
-#
-# Variáveis que não serão modificadas
+# Local do pidfile
 #
 PID=/run/vpn.pid
 
@@ -55,32 +38,84 @@ function connect {
 	fi
 
 	#
-	# Se o token estiver plugado, conecta com o Openconnect
-	# O utilizador é alertado que precisa do PIN do token *e* da senha de login
-	# Usamos o sudo para não precisar rodar o script todo como root
+	# Carrega o arquivo $HOME/.vpn.env ou sai com um aviso
 	#
-	echo "*** ATENÇÃO ***"
-	echo "Entre com o PIN do token e a senha de login."
-	sudo openconnect --authgroup $GATEWAY --certificate $USERCERT --servercert $SERVERCERT --protocol=gp --cafile=$CAFILE --disable-ipv6 --syslog --pid-file=$PID --background $PORTAL --user $USUARIO
-
-	#
-        # Já que a saída está toda no syslog, precisamos checar se *realmente* estamos conectados.
-	# Para isso, precisamos esperar a VPN estabilizar (ou não)
-	#
-	echo "Esperando a VPN estabilizar... Aguarde!"
-	sleep 10 
-	ENDIP=$(ip a show dev tun0 2>/dev/null | grep -w "inet" | cut -d " " -f 6 | cut -d "/" -f 1)
-	if [[ -z $ENDIP ]]
+	if [ ! -f $HOME/.vpn.env ]
 	then
-		echo "Não consegui identificar um endereço IP! Verifique se estamos logados na VPN."
+		echo "Crie o arquivo .vpn.env no diretório do usuário a partir do modelo em vpn.env.modelo!"
 		exit 1
 	else
-		echo "Estamos conectados à VPN com o IP "$ENDIP
+		source $HOME/.vpn.env
 	fi
 
 	#
-	# Apontamos os DNS e os resolvers de domínios de busca que queremos para a conexão da VPN (tun0)
-	# Precisamos disso porque o openconnect não faz isso automaticamente
+	# Com .vpn.env carregado, vamos ver se as variáveis obrigatórias existem
+	#
+	if [[ -z "$USERCERT" || -z "$SERVERCERT" || -z "$CAFILE" || -z "$PORTAL" || -z "$GATEWAY" || -z "$USUARIO" || -z "$DNS1" || -z "$DNS2" || -z "$DOMAIN1" || -z "$DOMAIN2" ]]
+	then
+		echo "Por favor, preencha as variáveis obrigatórias em .vpn.env!"
+		exit 1
+	fi
+	
+	#
+	# ATENÇÃO:
+	# Os exemplos abaixo estão preparados para o Bitwarden, modifique caso você use um gerenciador de senhas diferente!
+	#
+	# Abrindo o chaveiro do Bitwarden.
+	# Se você usar um nome diferente de "Senha LDAP" para guardar a senha do LDAP, mude o nome.
+	# O mesmo aviso é válido caso seu PIN do token não esteja usando o nome "PIN Token A3"
+	# Se não tiver instalado o cliente console do Bitwarden, veja https://bitwarden.com/help/cli/
+	#
+	# Caso não tenha nenhum gerenciador de senhas instalado, pode deixar como está que o bash vai passar sem executar o login
+	#
+
+	if [ -z `which bw` ]
+	then
+		echo "*** ATENÇÃO ***"
+		echo "É necessário desbloquear o chaveiro do Bitwarden para se logar à VPN!"
+		BW_SESSION=$(bw unlock --raw)
+	fi
+
+	#
+	# Caso SENHA_LDAP e SENHA_PIN tenham sido definidos no .vpn.env, vamos utilizá-los
+	# Se não existirem, vamos no chaveiro do Bitwarden
+	# Se você usar um nome diferente de "Senha LDAP" para guardar a senha do LDAP, mude o nome.
+	# O mesmo aviso é válido caso seu PIN do token não esteja usando o nome "PIN Token A3"
+	#
+	# Modifique para seu gerenciador de senhas
+	#
+	[[ -z "$SENHA_LDAP" ]] && SENHA_LDAP=$(bw get password "Senha LDAP" --session $BW_SESSION --raw)
+	[[ -z "$SENHA_PIN" ]] && SENHA_PIN=$(bw get notes "PIN Token A3" --session $BW_SESSION)
+
+	#
+	# Estando tudo bem, avisamos ao utilizador que vamos nos conectar
+	#
+	echo
+	echo "Conectando à VPN, por favor aguarde..."
+
+	#
+	# Conecta com o Openconnect
+	#
+	sudo openconnect --authgroup=$GATEWAY --certificate=$USERCERT --servercert=$SERVERCERT --protocol=gp --cafile=$CAFILE --disable-ipv6 --syslog --pid-file=$PID --background $PORTAL --user=$USUARIO
+
+    #
+    # Já que a saída está toda no syslog, precisamos checar se *realmente* estamos conectados.
+    # Para isso, precisamos esperar a VPN estabilizar (ou não)
+    #
+    echo "Esperando a VPN estabilizar... Aguarde!"
+    sleep 30 
+    ENDIP=$(ip a show dev tun0 2>/dev/null | grep -w "inet" | cut -d " " -f 6 | cut -d "/" -f 1)
+    if [[ -z $ENDIP ]]
+    then
+            echo "Não consegui identificar um endereço IP! Verifique se estamos logados na VPN."
+            exit 1
+    else
+            echo "Estamos conectados à VPN com o IP "$ENDIP
+    fi
+
+	#
+	# Pelo menos no Ubuntu 20.04+, o openconnect não está configurando automaticamente os DNS e os domínios de search para a conexão da VPN
+	# Por isso, as linhas abaixo são necessárias
 	#
 	# Dica retirada de https://www.gabriel.urdhr.fr/2020/03/17/systemd-revolved-dns-configuration-for-vpn/
 	#
