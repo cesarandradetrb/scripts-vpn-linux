@@ -6,16 +6,6 @@
 
 prog_name=$(basename $0)
 
-# 
-# Definimos as variáveis que utilizaremos em caso de conexão
-# TODAS as modificações de personalização do script são feitas aqui
-#
-PERFIL="perfil"
-USUARIO="usuario"
-# Estas variáveis não são necessárias caso a conexão VPN sete automaticamente os DNS
-DNS1=0.0.0.0
-DOMAIN1="~interno"
-
 #
 # Ajuda
 #
@@ -30,12 +20,58 @@ function help {
 
 function connect {
 	#
+	# Carrega $HOME/.vpnplus.env ou sai com um aviso
+	#
+	if [ ! -f $HOME/.vpnplus.env ]
+	then
+		echo "Crie o arquivo .vpnplus.env no diretório do usuário a partir do modelo em vpn.env.modelo!"
+		exit 1
+	else
+		source $HOME/.vpn.env
+	fi
+
+	#
+	# Com .vpnplus.env carregado, vamos ver se as variáveis obrigatórias existem
+	#
+	if [[ -z "$DNS1" || -z "$DOMAIN1" ]]
+	then
+		echo "Por favor, preencha as variáveis obrigatórias em .vpnplus.env!"
+		exit 1
+	fi
+
+	#
+	# ATENÇÃO:
+	# Os exemplos abaixo estão preparados para o Bitwarden, modifique caso você use um gerenciador de senhas diferente!
+	#
+	# Abrindo o chaveiro do Bitwarden.
+	# Se você usar um nome diferente de "SSL-VPNPlus" para guardar as informações da VPN, mude o nome.
+	# Além disso, criamos um campo customizado para guardar o perfil; mude isso caso você use outro método.
+	# Se não tiver instalado o cliente console do Bitwarden, veja https://bitwarden.com/help/cli/
+	#
+	# Caso não tenha nenhum gerenciador de senhas instalado, pode deixar como está que o bash vai passar sem executar o login
+	#
+
+	if [ -z `which bw` ]
+	then
+		echo "*** ATENÇÃO ***"
+		echo "É necessário desbloquear o chaveiro do Bitwarden para se logar à VPN!"
+		BW_SESSION=$(bw unlock --raw)
+	fi
+
+	#
+	# Caso PERFIL, USUARIO e PASSWD estejam definidos no .vpnplus.env, usamos os valores contidos
+	#
+	# Como sempre, modifique para seu gerenciador de senhas.
+	#
+	[[ -z "$PERFIL" ]] && PERFIL=$(bw get item "SSL-VPNPlus" --session $BW_SESSION | jq -r '.fields[0] .value'))
+	[[ -z "$USUARIO" ]] && USUARIO=$(bw get username "SSL-VPNPlus" --session $BW_SESSION --raw)
+	[[ -z "$PASSWD" ]] && PASSWD=$(bw get password "SSL-VPNPlus" --session $BW_SESSION --raw)
+
+	#
 	# Conecta na VPN
-	# O utilizador é alertado de que precisa da senha do SSL-VPN Plus
 	#
 	echo "*** ATENÇÃO ***"
-	echo "Entre com a senha do SSL-VPN Plus quando solicitado"
-	naclient login -profile $PERFIL -user $USUARIO
+	naclient login -profile $PERFIL -user $USUARIO -password $PASSWD
 
     #
     # Já que a saída está toda no syslog, precisamos checar se *realmente* estamos conectados.

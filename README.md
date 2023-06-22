@@ -5,9 +5,9 @@ Este repositório serve para guardar scripts em shell Bash para uso com VPNs esp
 ## Scripts
 
 - `vpn-tokena3.sh`: conexão a uma VPN GlobalProtect usando um token USB com certificado A3. A configuração do token fica a cargo do utilizador.
-  - `vpn.env.modelo`: modelo de configuração do script. Deve ser copiado para `.vpn.env` no $HOME do usuário e alterado para as configurações da sua VPN *antes* de executar o script.
-  - Um gerenciador de senha pode ser utilizado para guardar a senha de login da VPN e o PIN do token A3.
+  - `vpn.env.modelo`: modelo de configuração do script. *Caso não seja usado um gerenciador de senhas* deve ser copiado para `.vpn.env` no $HOME do usuário e alterado para as configurações da sua VPN *antes* de executar o script.
 - `ssl-vpnplus.sh`: conexão a uma VPN VMware SSL-VPNPlus usando o cliente Linux, que deve estar previamente instalado e configurado.
+  - `vpnplus.env.modelo`: modelo de configuração do script. *Caso não seja usado um gerenciador de senhas* deve ser copiado para `.vpnplus.env` no $HOME do usuário e alterado para as configurações da sua VPN *antes* de executar o script.
 
 ## Utilização
 

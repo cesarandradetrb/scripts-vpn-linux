@@ -51,7 +51,7 @@ function connect {
 	#
 	# Com .vpn.env carregado, vamos ver se as variáveis obrigatórias existem
 	#
-	if [[ -z "$USERCERT" || -z "$SERVERCERT" || -z "$CAFILE" || -z "$PORTAL" || -z "$GATEWAY" || -z "$USUARIO" || -z "$DNS1" || -z "$DNS2" || -z "$DOMAIN1" || -z "$DOMAIN2" ]]
+	if [[ -z "$USERCERT" || -z "$SERVERCERT" || -z "$CAFILE" || -z "$PORTAL" || -z "$GATEWAY" || -z "$USUARIO" || -z "$DNS1" || -z "$DOMAIN1" ]]
 	then
 		echo "Por favor, preencha as variáveis obrigatórias em .vpn.env!"
 		exit 1
@@ -77,15 +77,21 @@ function connect {
 	fi
 
 	#
-	# Caso SENHA_LDAP e SENHA_PIN tenham sido definidos no .vpn.env, vamos utilizá-los
+	# Caso as variáveis não-obrigatórias tenham sido definidas no .vpn.env, vamos utilizá-las
 	# Se não existirem, vamos no chaveiro do Bitwarden
-	# Se você usar um nome diferente de "Senha LDAP" para guardar a senha do LDAP, mude o nome.
-	# O mesmo aviso é válido caso seu PIN do token não esteja usando o nome "PIN Token A3"
+	#
+	# Usamos uma entrada chamada "Infos VPN" com usuário e senha preenchidos e três campos personalizados com, respectivamente,
+	# o certificado do usuário (USERCERT), o certificado do servidor (SERVERCERT) e o PIN do token (PIN_TOKEN).
+	#
+	# Caso você use uma entrada ou uma estrutura diferente, modifique.
 	#
 	# Modifique para seu gerenciador de senhas
 	#
-	[[ -z "$SENHA_LDAP" ]] && SENHA_LDAP=$(bw get password "Senha LDAP" --session $BW_SESSION --raw)
-	[[ -z "$SENHA_PIN" ]] && SENHA_PIN=$(bw get notes "PIN Token A3" --session $BW_SESSION)
+	[[ -z "$USERCERT" ]] && USERCERT=$(bw get item "Infos VPN" --session $BW_SESSION | jq -r '.fields[0] .value')
+	[[ -z "$SERVERCERT" ]] && SERVERCERT=$(bw get item "Infos VPN" --session $BW_SESSION | jq -r '.fields[1] .value')
+	[[ -z "$USUARIO" ]] && USUARIO=$(bw get username "Infos VPN" --session $BW_SESSION --raw)
+	[[ -z "$PASSWD" ]] && PASSWD=$(bw get password "Infos VPN" --session $BW_SESSION --raw)
+	[[ -z "$PIN_TOKEN" ]] && PIN_TOKEN=$(bw get notes "Infos VPN" --session $BW_SESSION)
 
 	#
 	# Estando tudo bem, avisamos ao utilizador que vamos nos conectar
@@ -96,7 +102,7 @@ function connect {
 	#
 	# Conecta com o Openconnect
 	#
-	sudo openconnect --authgroup=$GATEWAY --certificate=$USERCERT --servercert=$SERVERCERT --protocol=gp --cafile=$CAFILE --disable-ipv6 --syslog --pid-file=$PID --background $PORTAL --user=$USUARIO
+	echo $PASSWD | sudo openconnect --authgroup=$GATEWAY --certificate=$USERCERT --servercert=$SERVERCERT --protocol=gp --cafile=$CAFILE --disable-ipv6 --syslog --pid-file=$PID --background $PORTAL --user=$USUARIO --passwd-on-stdin --key-password=$PIN_TOKEN
 
     #
     # Já que a saída está toda no syslog, precisamos checar se *realmente* estamos conectados.
